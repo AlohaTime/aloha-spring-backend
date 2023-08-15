@@ -2,6 +2,7 @@ buildscript {
 	ext {
 		// 버전을 명시하지 않으면 계속해서 최신 버전을 가져오기 때문에 버전 명시
 		querydslVersion = '5.0.0'
+		swaggerVersion = '2.0.4'
 	}
 }
 
@@ -43,6 +44,9 @@ dependencies {
 	annotationProcessor "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"
 	annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
 	annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+
+	// swagger
+	implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${swaggerVersion}"
 }
 
 def querydslSrcDir = 'src/main/generated'
