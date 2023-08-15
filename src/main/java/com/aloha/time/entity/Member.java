@@ -14,8 +14,10 @@ public class Member {
     @Column
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
+
     @Column
     private String password;
+
     @Column
     private String email;
 }
