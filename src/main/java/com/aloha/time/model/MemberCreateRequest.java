@@ -1,4 +1,4 @@
-package com.inha.plus.api.model;
+package com.aloha.time.model;
 
 import lombok.Getter;
 

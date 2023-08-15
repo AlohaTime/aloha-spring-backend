@@ -1,7 +1,7 @@
-package com.inha.plus.api.service;
+package com.aloha.time.service;
 
-import com.inha.plus.api.entity.Member;
-import com.inha.plus.api.repository.MemberRepository;
+import com.aloha.time.entity.Member;
+import com.aloha.time.repository.MemberRepository;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

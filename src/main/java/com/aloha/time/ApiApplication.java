@@ -1,4 +1,4 @@
-package com.inha.plus.api;
+package com.aloha.time;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

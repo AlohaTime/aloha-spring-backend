@@ -1,6 +1,6 @@
-package com.inha.plus.api.repository;
+package com.aloha.time.repository;
 
-import com.inha.plus.api.entity.Member;
+import com.aloha.time.entity.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,8 +1,8 @@
-package com.inha.plus.api.controller;
+package com.aloha.time.controller;
 
-import com.inha.plus.api.entity.Member;
-import com.inha.plus.api.model.MemberCreateRequest;
-import com.inha.plus.api.service.MemberService;
+import com.aloha.time.entity.Member;
+import com.aloha.time.model.MemberCreateRequest;
+import com.aloha.time.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

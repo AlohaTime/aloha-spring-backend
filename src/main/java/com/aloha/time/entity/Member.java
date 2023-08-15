@@ -1,4 +1,4 @@
-package com.inha.plus.api.entity;
+package com.aloha.time.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
