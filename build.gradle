@@ -3,6 +3,7 @@ buildscript {
 		// 버전을 명시하지 않으면 계속해서 최신 버전을 가져오기 때문에 버전 명시
 		querydslVersion = '5.0.0'
 		swaggerVersion = '2.0.4'
+		mapstructVersion = '1.5.3'
 	}
 }
 
@@ -47,6 +48,12 @@ dependencies {
 
 	// swagger
 	implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${swaggerVersion}"
+
+	// mapstruct
+	implementation "org.mapstruct:mapstruct:${mapstructVersion}.Final"
+	annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}.Final"
+
+	testImplementation "org.mapstruct:mapstruct:${mapstructVersion}.Final"
 }
 
 def querydslSrcDir = 'src/main/generated'
