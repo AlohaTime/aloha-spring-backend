@@ -11,13 +11,12 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/member")
+@RequestMapping("/members")
 public class MemberController {
     private final MemberService memberService;
 
     @GetMapping
-    public ResponseEntity<?> getUser(@RequestParam(required = false) Long id,
-                                     @RequestParam String email) {
+    public ResponseEntity<?> getUser(@RequestParam(required = false) Long id, @RequestParam String email) {
         List<Member> memberList = memberService.getUser(id, email);
         return ResponseEntity.ok(memberList);
     }
