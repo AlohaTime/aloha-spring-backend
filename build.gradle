@@ -54,6 +54,9 @@ dependencies {
 	annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}.Final"
 
 	testImplementation "org.mapstruct:mapstruct:${mapstructVersion}.Final"
+
+	// JSOUP
+	implementation 'org.jsoup:jsoup:1.14.2'
 }
 
 def querydslSrcDir = 'src/main/generated'

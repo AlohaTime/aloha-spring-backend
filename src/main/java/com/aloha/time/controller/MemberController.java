@@ -1,12 +1,14 @@
 package com.aloha.time.controller;
 
-import com.aloha.time.entity.Member;
+import com.aloha.time.model.AttendanceDto;
+import com.aloha.time.model.LoginRequest;
 import com.aloha.time.model.MemberCreateRequest;
 import com.aloha.time.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -15,16 +17,30 @@ import java.util.List;
 public class MemberController {
     private final MemberService memberService;
 
+    // 로그인이나 출석정보AttendanceGetRequest
+    @PostMapping("/login")
+    public String login(@RequestBody LoginRequest request) throws IOException {
+        String token = memberService.loginUser(request.getId(), request.getPassword());
+        return token;
+    }
+
+    // API 규격은 memberId로 출석 여부를 가져온다고 했지만, 로그인한 토큰만 있으면 되는 듯?
     @GetMapping
+    public List<AttendanceDto> getAttendances(@RequestParam(required = true) String token) throws IOException {
+        return memberService.getAttendances(token);
+    }
+    /*@GetMapping
     public ResponseEntity<?> getUser(@RequestParam(required = false) Long id, @RequestParam String email) {
         List<Member> memberList = memberService.getUser(id, email);
         return ResponseEntity.ok(memberList);
-    }
+    }*/
 
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody MemberCreateRequest request) {
         String msg = memberService.createUser(request.getPassword(), request.getEmail());
         return ResponseEntity.ok(msg);
     }
+
+
 
 }
