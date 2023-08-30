@@ -8,10 +8,10 @@ import lombok.*;
 @AllArgsConstructor
 
 public class AttendanceDto {
-    Integer month;
+    /*Integer month;
     Integer week;
+    String attendedDate;*/
     String subjectName;
-    String attendedDate;
     String attendedDateTo;
     String attendedDateFrom;
     Boolean isAttended;

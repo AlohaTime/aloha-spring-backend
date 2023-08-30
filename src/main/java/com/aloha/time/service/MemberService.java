@@ -2,10 +2,10 @@ package com.aloha.time.service;
 
 import com.aloha.time.entity.Member;
 import com.aloha.time.model.AttendanceDto;
-import com.aloha.time.model.MemberDto;
 import com.aloha.time.repository.MemberRepository;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -14,10 +14,16 @@ import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MemberService {
     private final MemberRepository memberRepository;
 
@@ -68,12 +74,14 @@ public class MemberService {
         String token = res.cookie("MoodleSession");
         String resUrl = res.url().toString();
 
+        // 성공 >> https://learn.inha.ac.kr/
+        // 실패 >> https://learn.inha.ac.kr/login.php?errorcode=3
         if(!resUrl.equals("https://learn.inha.ac.kr/")) token = "";
 
         return token;
     }
 
-    public List<AttendanceDto> getAttendances(String token) throws IOException {
+    public List<AttendanceDto> getAttendances(String token) throws IOException, ParseException {
         String url = "https://learn.inha.ac.kr/";
 
         Connection.Response res = Jsoup.connect(url)
@@ -85,42 +93,58 @@ public class MemberService {
         Document doc = res.parse();
         Elements myCourses = doc.select(".course_link");
 
-        Set<String> setSubjectId = new HashSet<String>();
+        //key : 과목 Id, value = 과목명
+        Map<String, String> mapCourseIdName = new HashMap<>();
 
+        String courseId = "";
+        String courseName = "";
         for (Element courseEl : myCourses) {
-            setSubjectId.add(courseEl.attr("abs:href").split("=")[1]);
+            courseId = courseEl.attr("abs:href").split("=")[1];
+            courseName = courseEl.select(".course-name .course-title h3").text();
+            mapCourseIdName.put(courseId, courseName);
         }
 
         List<AttendanceDto> attendanceDtoList = new ArrayList<>();
-        AttendanceDto attendanceDto = new AttendanceDto();
+        AttendanceDto attendanceDto;
 
-        /*if(!setSubjectId.isEmpty()) {
+        if(!mapCourseIdName.isEmpty()) {
             url = "https://learn.inha.ac.kr/report/ubcompletion/user_progress_a.php?id=";
-            for(String subjectId : setSubjectId) {
+
+            String subjectName = "";
+            for(String subjectId : mapCourseIdName.keySet()) {
                 Connection.Response progressRes = Jsoup.connect(url + subjectId)
                         .cookie("MoodleSession", token)
                         .execute();
 
                 Document progressDoc = progressRes.parse();
                 Elements myProgress = progressDoc.select(".user_progress_table tbody tr");
-
+                log.info("과목명 >> " + mapCourseIdName.get(subjectId));
+                subjectName = mapCourseIdName.get(subjectId);
+                String fromDate = "";
+                String toDate = "";
                 for (Element week : myProgress) {
-                    if(week.children().size() != 6) continue;
-                    String attendance = week.select("td").last().text();
-                    System.out.println("attendance >> " + attendance);
-                    //TODO. attendance가 'O'면 true? 확인
-                    *//*attendanceDto.setMonth();
-                    attendanceDto.setWeek();
-                    attendanceDto.setSubjectName();
-                    attendanceDto.setAttendedDate();
-                    attendanceDto.setAttendedDateTo();
-                    attendanceDto.setAttendedDateFrom();
-                    attendanceDto.setIsAttended();*//*
-                    //attendanceDtoList.add(attendanceDto);
-                }
 
+                    Boolean isAttended = week.select("td").last().text().equals("O") ? true : false;
+                    DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+                    fromDate = week.select("td:nth-child(4) .btn.btn-default.btn-xs.track_detail").attr("data-sterm");
+                    toDate = week.select("td:nth-child(4) .btn.btn-default.btn-xs.track_detail").attr("data-eterm");
+
+                    if(!fromDate.equals("")) {
+                        fromDate = formatter.format(Long.parseLong(fromDate) * 1000L);
+                    }
+                    if(!toDate.equals("")) {
+                        toDate = formatter.format(Long.parseLong(toDate) * 1000L);
+                    }
+
+                    attendanceDto = new AttendanceDto();
+                    attendanceDto.setSubjectName(subjectName);
+                    attendanceDto.setAttendedDateTo(toDate);
+                    attendanceDto.setAttendedDateFrom(fromDate);
+                    attendanceDto.setIsAttended(isAttended);
+                    attendanceDtoList.add(attendanceDto);
+                }
             }
-        }*/
+        }
         return attendanceDtoList;
     }
 

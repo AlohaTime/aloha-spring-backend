@@ -5,10 +5,12 @@ import com.aloha.time.model.LoginRequest;
 import com.aloha.time.model.MemberCreateRequest;
 import com.aloha.time.service.MemberService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.List;
 
 @RestController
@@ -26,7 +28,7 @@ public class MemberController {
 
     // API 규격은 memberId로 출석 여부를 가져온다고 했지만, 로그인한 토큰만 있으면 되는 듯?
     @GetMapping
-    public List<AttendanceDto> getAttendances(@RequestParam(required = true) String token) throws IOException {
+    public List<AttendanceDto> getAttendances(@RequestParam(required = true) String token) throws IOException, ParseException {
         return memberService.getAttendances(token);
     }
     /*@GetMapping
