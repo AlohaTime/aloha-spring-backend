@@ -1,5 +1,6 @@
 package com.aloha.time.controller;
 
+import com.aloha.time.model.AssignmentDto;
 import com.aloha.time.model.AttendanceDto;
 import com.aloha.time.model.LoginRequest;
 import com.aloha.time.model.MemberCreateRequest;
@@ -27,9 +28,13 @@ public class MemberController {
     }
 
     // API 규격은 memberId로 출석 여부를 가져온다고 했지만, 로그인한 토큰만 있으면 되는 듯?
-    @GetMapping
+    @GetMapping("/attendances")
     public List<AttendanceDto> getAttendances(@RequestParam(required = true) String token) throws IOException, ParseException {
         return memberService.getAttendances(token);
+    }
+    @GetMapping("/assignments")
+    public List<AssignmentDto> getAssignments(@RequestParam(required = true) String token) throws IOException {
+        return memberService.getAssignments(token);
     }
     /*@GetMapping
     public ResponseEntity<?> getUser(@RequestParam(required = false) Long id, @RequestParam String email) {
