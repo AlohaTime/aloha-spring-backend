@@ -178,12 +178,12 @@ public class MemberService {
                         }
                     }
 
-                } else {
-                    //해당 과목은 동영상(온라인 출석)봐야할 게 없음
-                    attendanceDto = new AttendanceDto();
+                } else { //해당 과목은 동영상(온라인 출석)봐야할 게 없음
+                    // 동영상이 없는 경우 리턴 목록에 추가 안함
+                    /*attendanceDto = new AttendanceDto();
                     attendanceDto.setSubjectName(mapCourseIdName.get(subjectId));
                     attendanceDto.setErrorMsg("동영상이 없습니다.");
-                    attendanceDtoList.add(attendanceDto);
+                    attendanceDtoList.add(attendanceDto);*/
                 }
 
             }
@@ -236,15 +236,19 @@ public class MemberService {
                                 String colName = detailAssignEl.select("td").first().text();
                                 String colValue = detailAssignEl.select("td").last().text();
 
-                                if(colName.equals("제출 여부")) {
+                                /*if(colName.equals("제출 여부")) {
                                     assignmentDto.setIsSubmit(colValue.equals("제출 안 함") ? false : true);
-                                } else if(colName.equals("채점 상황")) {
+                                } else */
+                                if(colName.equals("채점 상황")) {
                                     // 추후 DTO에 필드 추가 후 set
                                 } else if(colName.equals("종료 일시")) {
                                     assignmentDto.setDueDate(colValue);
                                 } else if(colName.equals("마감까지 남은 기한")) {
                                     // 추후 DTO에 필드 추가 후 set
-                                } else if(colName.equals("최종 수정 일시")) {
+                                } else if(colName.equals("최종 수정 일시") && colValue != null) {
+                                    if(colValue.equals("-")) {
+                                        colValue = "";
+                                    }
                                     assignmentDto.setSubmitDate(colValue);
                                 }
                             }

@@ -11,6 +11,6 @@ public class AssignmentDto {
     String submitDate;
 
     String dueDate;
-    Boolean isSubmit;
+    //Boolean isSubmit; // 사용안함
     String errorMsg; // 결과값이 없는 경우, 반환할 메시지
 }
