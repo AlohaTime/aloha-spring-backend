@@ -36,18 +36,5 @@ public class MemberController {
     public List<AssignmentDto> getAssignments(@RequestParam(required = true) String token) throws IOException {
         return memberService.getAssignments(token);
     }
-    /*@GetMapping
-    public ResponseEntity<?> getUser(@RequestParam(required = false) Long id, @RequestParam String email) {
-        List<Member> memberList = memberService.getUser(id, email);
-        return ResponseEntity.ok(memberList);
-    }*/
-
-    @PostMapping
-    public ResponseEntity<?> createUser(@RequestBody MemberCreateRequest request) {
-        String msg = memberService.createUser(request.getPassword(), request.getEmail());
-        return ResponseEntity.ok(msg);
-    }
-
-
 
 }

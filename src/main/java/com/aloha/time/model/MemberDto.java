@@ -1,6 +1,5 @@
 package com.aloha.time.model;
 
-import jakarta.persistence.*;
 import lombok.*;
 
 @Getter
