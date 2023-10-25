@@ -1,7 +1,5 @@
 package com.aloha.time.service;
 
-
-import com.aloha.time.entity.Member;
 import com.aloha.time.model.ApiResponse;
 import com.aloha.time.model.AssignmentDto;
 import com.aloha.time.model.AttendanceDto;
@@ -30,7 +28,6 @@ public class MemberService {
     private String loginUrl;
     @Value("${connection.iclass-video-url}")
     private String videoUrl;
-    private final MemberRepository memberRepository;
 
     // 1. 로그인(토큰 가져오기)
     public ApiResponse loginUser(String memberId, String memberPw) {
