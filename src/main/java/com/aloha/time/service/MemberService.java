@@ -128,6 +128,7 @@ public class MemberService {
                                         attendanceDto.setSubjectName(mapCourseIdName.get(subjectId));
                                         attendanceDto.setLectureName(lectureName);
                                         attendanceDto.setIsAttended(mapAttendance.get(lectureName));
+                                        attendanceDto.setVideoPageUrl(videoUrl);
 
                                         Boolean isAdd = true;
                                         for(Element attendTermEl : attendTermEls) {
@@ -216,6 +217,7 @@ public class MemberService {
                                         assignmentDto = new AssignmentDto();
                                         assignmentDto.setSubjectName(mapCourseIdName.get(subjectId));
                                         assignmentDto.setAssignName(assignName);
+                                        assignmentDto.setSubmitPageUrl(detailUrl);
                                         // 과제 세부정보 테이블
                                         for(Element detailAssignEl : viewPgEls) {
                                             String colName = detailAssignEl.select("td").first().text();
