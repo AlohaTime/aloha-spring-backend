@@ -32,18 +32,4 @@ public class MemberController {
     public ApiResponse getAssignments(String token) throws IOException {
         return memberService.getAssignments(token);
     }
-    /*@GetMapping
-    public ResponseEntity<?> getUser(Long id, @RequestParam String email) {
-        List<Member> memberList = memberService.getUser(id, email);
-        return ResponseEntity.ok(memberList);
-    }*/
-
-    @PostMapping
-    public ResponseEntity<?> createUser(@RequestBody MemberCreateRequest request) {
-        String msg = memberService.createUser(request.getPassword(), request.getEmail());
-        return ResponseEntity.ok(msg);
-    }
-
-
-
 }

@@ -1,12 +1,3 @@
-buildscript {
-	ext {
-		// 버전을 명시하지 않으면 계속해서 최신 버전을 가져오기 때문에 버전 명시
-		querydslVersion = '5.0.0'
-		swaggerVersion = '2.0.4'
-		mapstructVersion = '1.5.3'
-	}
-}
-
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.1.2'
@@ -31,53 +22,14 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	runtimeOnly 'com.h2database:h2'
 
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
-	// QueryDSL
-	implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
-	implementation "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"
-	annotationProcessor "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"
-	annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
-	annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
-
-	// swagger
-	implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${swaggerVersion}"
-
-	// mapstruct
-	implementation "org.mapstruct:mapstruct:${mapstructVersion}.Final"
-	annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}.Final"
-
-	testImplementation "org.mapstruct:mapstruct:${mapstructVersion}.Final"
-
 	// JSOUP
 	implementation 'org.jsoup:jsoup:1.12.1'
-}
-
-def querydslSrcDir = 'src/main/generated'
-sourceSets {
-	main {
-		java {
-			srcDirs += [ querydslSrcDir ]
-		}
-	}
-}
-
-compileJava {
-	options.compilerArgs << '-Aquerydsl.generatedAnnotationClass=javax.annotation.Generated'
-}
-
-tasks.withType(JavaCompile) {
-	options.generatedSourceOutputDirectory = file(querydslSrcDir)
-}
-
-clean {
-	delete file(querydslSrcDir)
 }
 
 tasks.named('test') {
