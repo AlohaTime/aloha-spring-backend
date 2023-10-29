@@ -25,11 +25,16 @@ public class MemberController {
 
     // API 규격은 memberId로 출석 여부를 가져온다고 했지만, 로그인한 토큰만 있으면 되는 듯?
     @GetMapping("/attendances")
-    public ApiResponse getAttendances(String token) throws IOException, ParseException {
+    public ApiResponse getAttendances(String token){
         return memberService.getAttendances(token);
     }
     @GetMapping("/assignments")
-    public ApiResponse getAssignments(String token) throws IOException {
+    public ApiResponse getAssignments(String token){
         return memberService.getAssignments(token);
     }
+    @GetMapping("/quizzes")
+    public ApiResponse getQuizzes(String token) {
+        return memberService.getQuizzes(token);
+    }
+
 }

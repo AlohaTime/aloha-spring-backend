@@ -3,6 +3,7 @@ package com.aloha.time.service;
 import com.aloha.time.model.ApiResponse;
 import com.aloha.time.model.AssignmentDto;
 import com.aloha.time.model.AttendanceDto;
+import com.aloha.time.model.QuizDto;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,10 +29,13 @@ public class MemberService {
     private String loginUrl;
     @Value("${connection.iclass-video-url}")
     private String videoUrl;
+    @Value("${connection.iclass-assign-url}")
+    private String assignUrl;
+    @Value("${connection.iclass-quiz-url}")
+    private String quizUrl;
 
     // 1. 로그인(토큰 가져오기)
     public ApiResponse loginUser(String memberId, String memberPw) {
-        //String url = "https://learn.inha.ac.kr/login/index.php";
         Map<String, String> data = new HashMap<>();
         data.put("username", memberId);
         data.put("password", memberPw);
@@ -185,7 +189,7 @@ public class MemberService {
         AssignmentDto assignmentDto;
         Map<String, String> mapCourseIdName = (Map<String, String>)courseRes.getData();
         if(!mapCourseIdName.isEmpty()) {
-            String url = "https://learn.inha.ac.kr/mod/assign/index.php?id=";
+            String url = assignUrl;
             // index.php (과제명, 마감기한, 제출여부만 알 수 있음)
             Document indexPgDoc;
             Elements indexPgEls;
@@ -256,6 +260,95 @@ public class MemberService {
                 return new ApiResponse(500, e.getMessage(), null);
             }
             return new ApiResponse(200, "Success", listAssignment);
+        } else {
+            return new ApiResponse(404, "수강신청된 과목이 없습니다.", null);
+        }
+    }
+    public ApiResponse getQuizzes(String token) {
+        ApiResponse courseRes = getCourse(token);
+        List<QuizDto> listQuiz = new ArrayList<>();
+        QuizDto quizDto;
+
+        Map<String, String> mapCourseIdName = (Map<String, String>)courseRes.getData();
+        if(!mapCourseIdName.isEmpty()) {
+            String url = quizUrl;
+            // index.php (과제명, 마감기한, 제출여부만 알 수 있음)
+            Document indexPgDoc;
+            Elements indexPgEls;
+            // view.php (채점여부, 최종수정일시, 마감까지 남은 기한(n일)도 추가적으로 알 수 있음)
+            Document viewPgDoc;
+            Elements viewPgEls;
+
+            try {
+                log.info("getQuiz >> " + mapCourseIdName);
+                for(String subjectId : mapCourseIdName.keySet()) {
+                    ApiResponse subjectRes = doConnectByToken(url + subjectId, token);
+                    if(subjectRes.getData() != null) {
+                        Connection.Response quizRes = (Connection.Response) subjectRes.getData();
+                        indexPgDoc = quizRes.parse();
+
+                        if(!indexPgDoc.select(".generaltable tbody").hasClass("empty")) {
+                            indexPgEls = indexPgDoc.select(".generaltable tbody tr");
+                            // 퀴즈 세부 페이지
+                            for(Element quizEl : indexPgEls) {
+                                String detailUrl = quizEl.select("a").attr("abs:href"); // view.php URL 링크 가져옴
+                                if(!detailUrl.equals("")) {
+                                    ApiResponse detailRes = doConnectByToken(detailUrl, token);
+                                    if(detailRes.getData() != null) {
+                                        Connection.Response quizDetailRes = (Connection.Response) detailRes.getData();
+                                        viewPgDoc = quizDetailRes.parse();
+
+                                        String quizName = viewPgDoc.select("#page-content-wrap h2").text();
+                                        quizDto = new QuizDto();
+                                        quizDto.setSubjectName(mapCourseIdName.get(subjectId));
+                                        quizDto.setQuizName(quizName);
+                                        quizDto.setSolvePageUrl(detailUrl);
+
+                                        // 제출마감기한
+                                        viewPgEls = viewPgDoc.select(".box.quizinfo.well");
+                                        for(Element quizInfoEl : viewPgEls) {
+                                            String checkQuizInfo = quizInfoEl.select("p").text();
+                                            //log.info("box info >>"  + quizInfoEl.select("p").text());
+                                            if(checkQuizInfo.contains("종료일시")) {
+                                                String strDueDate = checkQuizInfo.split("종료일시 : ")[1];
+                                                quizDto.setDueDate(strDueDate);
+                                            }
+                                            if(checkQuizInfo.contains("퀴즈를 이용할 수 없음")){
+                                                quizDto.setQuizInfo("퀴즈를 이용할 수 없음");
+                                            }
+                                        }
+
+                                        viewPgEls = viewPgDoc.select(".generaltable tbody tr");
+                                        // 과제 세부정보 테이블
+                                        for(Element detailQuizEl : viewPgEls) {
+                                            //log.info("test0 >> " + detailQuizEl.select(".lastrow td").first().text());
+                                            String checkSubmitInfo = detailQuizEl.select(".lastrow td").first().text();
+                                            if(checkSubmitInfo.contains("종료됨")) {
+                                                //log.info("test1 >> " + detailQuizEl.select(".lastrow td").first().text());
+                                                //log.info("test2 >> " + detailQuizEl.select(".lastrow td").text());
+                                                quizDto.setSubmitDate(checkSubmitInfo.replace("종료됨", "").replace("에 제출됨", ""));
+                                            }
+                                        }
+                                        listQuiz.add(quizDto);
+                                    } else {
+                                        return detailRes;
+                                    }
+                                }
+                            }
+                        } else {
+                            quizDto = new QuizDto();
+                            quizDto.setSubjectName(mapCourseIdName.get(subjectId));
+                            listQuiz.add(quizDto);
+                        }
+                    } else {
+                        return subjectRes;
+                    }
+                }
+            }  catch(IOException e) {
+                return new ApiResponse(500, e.getMessage(), null);
+            }
+            return new ApiResponse(200, "Success", listQuiz);
+
         } else {
             return new ApiResponse(404, "수강신청된 과목이 없습니다.", null);
         }

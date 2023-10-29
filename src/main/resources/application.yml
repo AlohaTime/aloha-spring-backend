@@ -4,4 +4,6 @@ server:
 connection:
   iclass-init-url: "https://learn.inha.ac.kr/login/index.php"
   iclass-video-url: "https://learn.inha.ac.kr/mod/vod/index.php?id="
+  iclass-quiz-url: "https://learn.inha.ac.kr/mod/quiz/index.php?id="
+  iclass-assign-url: "https://learn.inha.ac.kr/mod/assign/index.php?id="
 
