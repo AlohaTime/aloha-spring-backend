@@ -33,7 +33,8 @@ public class MemberService {
     private String assignUrl;
     @Value("${connection.iclass-quiz-url}")
     private String quizUrl;
-
+    @Value("${connection.iclass-attend-url}")
+    private String attendUrl;
     // 1. 로그인(토큰 가져오기)
     public ApiResponse loginUser(String memberId, String memberPw) {
         Map<String, String> data = new HashMap<>();
@@ -68,7 +69,7 @@ public class MemberService {
         AttendanceDto attendanceDto;
         Map<String, String> mapCourseIdName = (Map<String, String>)courseRes.getData();
         if(!mapCourseIdName.isEmpty()) {
-            String url = "https://learn.inha.ac.kr/report/ubcompletion/user_progress_a.php?id="; // 온라인 출석부
+            String url = attendUrl; // 온라인 출석부
             // key : 동영상(강의)명, value : 출석여부(true:O / false:X)
             Map<String, Boolean> mapAttendance = new HashMap<>();
 
@@ -88,7 +89,9 @@ public class MemberService {
                             // map에 출석부에서 key : 강의명, value : 출석여부
                             int cellIdx = progressEl.select("td").size();
                             String mapKey = (cellIdx == 6) ? progressEl.select("td").get(1).text() : progressEl.select("td").first().text();
-                            String mapValue = progressEl.select("td").last().text();;
+                            log.info("mapKey > " + mapKey);
+                            String mapValue = (cellIdx == 6) ? progressEl.select("td").get(4).text() : progressEl.select("td").get(3).text();
+                            log.info("mapValue > " + mapValue);
 
                             if(!mapKey.equals("") && !mapValue.equals("") ) {
                                 mapAttendance.put(mapKey, mapValue.equals("O") ? true : false);
@@ -264,6 +267,7 @@ public class MemberService {
             return new ApiResponse(404, "수강신청된 과목이 없습니다.", null);
         }
     }
+    /* submitDate == null && quizInfo == null 이면 기간남은 퀴즈 안 푼거 */
     public ApiResponse getQuizzes(String token) {
         ApiResponse courseRes = getCourse(token);
         List<QuizDto> listQuiz = new ArrayList<>();
