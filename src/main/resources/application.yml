@@ -1,6 +1,11 @@
 server:
   port: 8080
 
+  ssl:
+    key-store: classpath:keystore.p12
+    key-store-password: pcy030714
+    key-store-type: PKCS12
+
 connection:
   iclass-init-url: "https://learn.inha.ac.kr/login/index.php"
   iclass-video-url: "https://learn.inha.ac.kr/mod/vod/index.php?id="
