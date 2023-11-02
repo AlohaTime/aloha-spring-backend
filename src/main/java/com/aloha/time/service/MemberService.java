@@ -25,6 +25,8 @@ import java.util.*;
 @RequiredArgsConstructor
 @Slf4j
 public class MemberService {
+    @Value("${connection.iclass-conn-success-url}")
+    private String successUrl;
     @Value("${connection.iclass-init-url}")
     private String loginUrl;
     @Value("${connection.iclass-video-url}")
@@ -52,10 +54,11 @@ public class MemberService {
             token = res.cookie("MoodleSession");
             resUrl = res.url().toString();
         } catch (IOException e) {
+            log.info("e.getMessage() >> " + e.getMessage());
             return new ApiResponse(500, e.getMessage(), null);
         }
 
-        String successUrl = "https://learn.inha.ac.kr/"; // 로그인 성공 시, URL
+        //String successUrl = "https://learn.inha.ac.kr/"; // 로그인 성공 시, URL
         if(!successUrl.equals(resUrl)) {
             return new ApiResponse(303, "로그인 실패", null);
         } else {
@@ -64,297 +67,272 @@ public class MemberService {
     }
 
     public ApiResponse getAttendances(String token) {
-        ApiResponse courseRes = getCourse(token);
-        List<AttendanceDto> attendanceDtoList = new ArrayList<>();
-        AttendanceDto attendanceDto;
-        Map<String, String> mapCourseIdName = (Map<String, String>)courseRes.getData();
-        if(!mapCourseIdName.isEmpty()) {
-            String url = attendUrl; // 온라인 출석부
-            // key : 동영상(강의)명, value : 출석여부(true:O / false:X)
-            Map<String, Boolean> mapAttendance = new HashMap<>();
+        ApiResponse apiResponse = getCourse(token);
 
-            try {
-                for(String subjectId : mapCourseIdName.keySet()) {
-                    ApiResponse subjectRes = doConnectByToken(url + subjectId, token);
-                    if(subjectRes.getData() != null) {
-                        Connection.Response progressRes = (Connection.Response) subjectRes.getData();
-                        Document progressDoc = progressRes.parse();
-                        Elements myProgress = progressDoc.select(".user_progress_table tbody tr");
+        if(apiResponse.getData() != null) {
+            Map<String, String> mapCourseIdName = (Map<String, String>)apiResponse.getData();
+            if(!mapCourseIdName.isEmpty()){// key : 동영상(강의)명, value : 출석여부(true:O / false:X)
+                List<AttendanceDto> attendanceDtoList = new ArrayList<>();
+                AttendanceDto attendanceDto;
+                Map<String, Boolean> mapAttendance = new HashMap<>();
+                //ApiResponse apiResponse;
+                Connection.Response connResTemp;
+                Document docTemp;
+                Elements elemsTemp;
+                try {
+                    for (String subjectId : mapCourseIdName.keySet()) {
+                        //온라인 출석부(출석여부 O/X 체크)
+                        apiResponse = doConnectByToken(attendUrl + subjectId, token);
+                        if (apiResponse.getData() != null) {
+                            connResTemp = (Connection.Response) apiResponse.getData();
+                            docTemp = connResTemp.parse();
+                            elemsTemp = docTemp.select(".user_progress_table tbody tr");
 
-                        for (Element progressEl : myProgress) {
-                            // 동영상의 제목과 온라인출석부의 강의자료 컬럼의
-                            // 출석부에서 O, X로 가져올 때 td가 6개면(첫번째 로우라서) 2번째 컬럼 가져와야 함
-                            // td가 4개면 첫번째 컬럼 가져와야 함(.text로 강의자료 값)
+                            Elements innerElems;
+                            String mapKey;
+                            String mapValue;
+                            for (Element progressEl : elemsTemp) {
+                                // 온라인 출석부에서 O, X로 가져올 때 td가 6개면 2번째, td가 4개면 첫번째 컬럼
+                                innerElems = progressEl.select("td");
+                                mapKey = (innerElems.size() == 6) ? innerElems.get(1).text() : innerElems.first().text();
+                                mapValue = (innerElems.size() == 6) ? innerElems.get(4).text() : innerElems.get(3).text();
 
-                            // map에 출석부에서 key : 강의명, value : 출석여부
-                            int cellIdx = progressEl.select("td").size();
-                            String mapKey = (cellIdx == 6) ? progressEl.select("td").get(1).text() : progressEl.select("td").first().text();
-                            log.info("mapKey > " + mapKey);
-                            String mapValue = (cellIdx == 6) ? progressEl.select("td").get(4).text() : progressEl.select("td").get(3).text();
-                            log.info("mapValue > " + mapValue);
-
-                            if(!mapKey.equals("") && !mapValue.equals("") ) {
-                                mapAttendance.put(mapKey, mapValue.equals("O") ? true : false);
+                                // TODO. 개선 필요
+                                if (!mapKey.equals("") && !mapValue.equals("")) {
+                                    mapAttendance.put(mapKey, mapValue.equals("O") ? true : false);
+                                }
                             }
+                        } else {
+                            return apiResponse;
                         }
-                    } else {
-                        return subjectRes;
-                    }
-                    // TODO. Connection할 떄, 문제가 있다면 null로 올 수도 있을 것 같은데 그 전에 catch에서 잡힐듯?
 
-                }
+                        // 동영상 목록에서 출석 정보 가져오기
+                        apiResponse = doConnectByToken(videoUrl + subjectId, token);
+                        if (apiResponse.getData() != null) {
+                            connResTemp = (Connection.Response) apiResponse.getData();
+                            docTemp = connResTemp.parse();
+                            elemsTemp = docTemp.select(".generaltable tbody tr");
 
-                //String testUrl = "https://learn.inha.ac.kr/mod/vod/index.php?id="; // + 과목Id로 과목의 동영상 목록을 가져옴
-                for(String subjectId : mapCourseIdName.keySet()) {
-                    ApiResponse videoRes = doConnectByToken(videoUrl + subjectId, token);
-                    if(videoRes.getData() != null) {
-                        Connection.Response connVideoRes = (Connection.Response) videoRes.getData();
-                        Document progressDoc = connVideoRes.parse();
-                        Elements myVideos = progressDoc.select(".generaltable tbody tr");
+                            if (!elemsTemp.isEmpty()) {
+                                String videoDetailUrl;
+                                String lectureName;
+                                for (Element myVideo : elemsTemp) {
+                                    videoDetailUrl = myVideo.select(".cell.c1 a").attr("abs:href");
+                                    lectureName = myVideo.select(".cell.c1 a").text();
 
-                        if(!myVideos.isEmpty()) {
-                            for(Element myVideo : myVideos) {
-                                String videoUrl = myVideo.select(".cell.c1 a").attr("abs:href");
-                                String lectureName = myVideo.select(".cell.c1 a").text();
+                                    if (!videoDetailUrl.equals("") && !lectureName.equals("")) {
+                                        apiResponse = doConnectByToken(videoDetailUrl, token); // todo. 여기가 제일 문제 -> 각 동영상마다 ..
+                                        connResTemp = (Connection.Response) apiResponse.getData();
+                                        docTemp = connResTemp.parse();
 
-                                if(!videoUrl.equals("") && !lectureName.equals("")) {
-                                    ApiResponse innerVideoRes = doConnectByToken(videoUrl, token);
-                                    Connection.Response innerRes = (Connection.Response) innerVideoRes.getData();
-                                /*Connection.Response innerRes = Jsoup.connect(videoUrl)
-                                        .cookie("MoodleSession", token)
-                                        .method(Connection.Method.GET)
-                                        .execute();*/
+                                        // 진도체크가 설정된 콘텐츠는 기간 전에 학습이 불가
+                                        if (!docTemp.select(".alert.alert-info h4 b").text().equals("학습불가")) {
+                                            Elements attendTermEls = docTemp.select(".box.vod_info");
+                                            attendanceDto = new AttendanceDto();
+                                            attendanceDto.setSubjectName(mapCourseIdName.get(subjectId));
+                                            attendanceDto.setLectureName(lectureName);
+                                            attendanceDto.setIsAttended(mapAttendance.get(lectureName));
+                                            attendanceDto.setVideoPageUrl(videoDetailUrl);
 
-                                    Document videoDoc = innerRes.parse();
+                                            for (Element attendTermEl : attendTermEls) {
+                                                String attendName = attendTermEl.select("span.vod_info").text(); // 시작일: 또는 출석인정일:이 나와야 함
+                                                String attendValue = attendTermEl.select("span.vod_info_value").text();
 
-                                    String alertChk = videoDoc.select(".alert.alert-info h4 b").text();
-                                    // 진도체크가 설정된 콘텐츠는 기간 전에 학습이 불가
-                                    if(!alertChk.equals("학습불가")) {
-                                        Elements attendTermEls = videoDoc.select(".box.vod_info");
-                                        attendanceDto = new AttendanceDto();
-                                        attendanceDto.setSubjectName(mapCourseIdName.get(subjectId));
-                                        attendanceDto.setLectureName(lectureName);
-                                        attendanceDto.setIsAttended(mapAttendance.get(lectureName));
-                                        attendanceDto.setVideoPageUrl(videoUrl);
-
-                                        Boolean isAdd = true;
-                                        for(Element attendTermEl : attendTermEls) {
-                                            String attendName = attendTermEl.select("span.vod_info").text(); // 시작일: 또는 출석인정일:이 나와야 함
-                                            String attendValue = attendTermEl.select("span.vod_info_value").text();
-
-                                            DateFormat formatter = new SimpleDateFormat("yyyy/MM/dd HH:mm");
-                                            //Date attendDate = formatter.parse(attendValue);
-                                            //Date today = new Date();
-
-                                            if(attendName.equals("시작일:")) attendanceDto.setAttendedDateTo(attendValue);
-                                            if(attendName.equals("출석인정기간:")) attendanceDto.setAttendedDateFrom(attendValue);
-                                            //금주 출석 -> 전체 출석
-                                            /*if(attendName.equals("시작일:") && !attendDate.after(today)) {
-                                                attendanceDto.setAttendedDateTo(attendValue);
-                                            } else if(attendName.equals("출석인정기간:") && !attendDate.before(today)) {
-                                                attendanceDto.setAttendedDateFrom(attendValue);
-                                            } else {
-                                                isAdd = false;
-                                                break;
-                                            }*/
-                                        }
-                                        if(isAdd) {
+                                                if (attendName.equals("시작일:"))
+                                                    attendanceDto.setAttendedDateTo(attendValue);
+                                                if (attendName.equals("출석인정기간:"))
+                                                    attendanceDto.setAttendedDateFrom(attendValue);
+                                            }
                                             attendanceDtoList.add(attendanceDto);
                                         }
                                     }
                                 }
                             }
+                        } else {
+                            return apiResponse;
                         }
-                    } else {
-                        return videoRes;
                     }
-                   /* Connection.Response progressRes = Jsoup.connect()
-                            .cookie("MoodleSession", token)
-                            .method(Connection.Method.GET)
-                            .execute();*/
-
-                    //다 getData() null체크하기
+                    return new ApiResponse(200, "Success", attendanceDtoList);
+                } catch (IOException e) {
+                    return new ApiResponse(500, e.getMessage(), null);
                 }
-                return new ApiResponse(200, "Success", attendanceDtoList);
-            } catch(IOException e) {
-                return new ApiResponse(500, e.getMessage(), null);
-            }/* catch(ParseException e) {
-                return new ApiResponse(404, e.getMessage(), null);
-            }*/
+            } else {
+                return new ApiResponse(404, "수강신청된 과목이 없습니다.", null);
+            }
         } else {
-            return new ApiResponse(404, "수강신청된 과목이 없습니다.", null);
+            return apiResponse;
         }
-        //return attendanceDtoList;
     }
     public ApiResponse getAssignments(String token) {
-        ApiResponse courseRes = getCourse(token);
-        List<AssignmentDto> listAssignment = new ArrayList<>();
-        AssignmentDto assignmentDto;
-        Map<String, String> mapCourseIdName = (Map<String, String>)courseRes.getData();
-        if(!mapCourseIdName.isEmpty()) {
-            String url = assignUrl;
-            // index.php (과제명, 마감기한, 제출여부만 알 수 있음)
-            Document indexPgDoc;
-            Elements indexPgEls;
-            // view.php (채점여부, 최종수정일시, 마감까지 남은 기한(n일)도 추가적으로 알 수 있음)
-            Document viewPgDoc;
-            Elements viewPgEls;
+        ApiResponse apiResponse = getCourse(token);
 
-            try {
-                log.info("getAssignments >> " + mapCourseIdName);
-                for (String subjectId : mapCourseIdName.keySet()) {
-                    ApiResponse subjectRes = doConnectByToken(url + subjectId, token);
-                    if(subjectRes.getData() != null) {
-                        Connection.Response assignRes = (Connection.Response) subjectRes.getData();
-                        indexPgDoc = assignRes.parse();
+        if(apiResponse.getData() != null) {
+            Map<String, String> mapCourseIdName = (Map<String, String>)apiResponse.getData();
+            if(!mapCourseIdName.isEmpty()) {
+                List<AssignmentDto> listAssignment = new ArrayList<>();
+                AssignmentDto assignmentDto;
 
-                        if(!indexPgDoc.select(".generaltable tbody").hasClass("empty")) {
-                            indexPgEls = indexPgDoc.select(".generaltable tbody tr");
-                            // 과제 세부 페이지
-                            for(Element assignEl : indexPgEls) {
-                                String detailUrl = assignEl.select("a").attr("abs:href"); // view.php URL 링크 가져옴
-                                if(!detailUrl.equals("")) {
-                                    ApiResponse detailRes = doConnectByToken(detailUrl, token);
-                                    if(detailRes.getData() != null) {
-                                        Connection.Response assignDetailRes = (Connection.Response) detailRes.getData();
-                                        viewPgDoc = assignDetailRes.parse();
-                                        String assignName = viewPgDoc.select("#page-content-wrap h2").text();
-                                        viewPgEls = viewPgDoc.select(".generaltable tbody tr");
+                Connection.Response connResTemp;
+                Document docTemp;
+                Elements elemsTemp;
 
-                                        assignmentDto = new AssignmentDto();
-                                        assignmentDto.setSubjectName(mapCourseIdName.get(subjectId));
-                                        assignmentDto.setAssignName(assignName);
-                                        assignmentDto.setSubmitPageUrl(detailUrl);
-                                        // 과제 세부정보 테이블
-                                        for(Element detailAssignEl : viewPgEls) {
-                                            String colName = detailAssignEl.select("td").first().text();
-                                            String colValue = detailAssignEl.select("td").last().text();
+                try {
+                    for (String subjectId : mapCourseIdName.keySet()) {
+                        apiResponse = doConnectByToken(assignUrl + subjectId, token);
+                        if(apiResponse.getData() != null) {
+                            connResTemp = (Connection.Response) apiResponse.getData();
+                            docTemp = connResTemp.parse();
 
-                                            if(colName.equals("채점 상황")) {
-                                                // 추후 DTO에 필드 추가 후 set
-                                            } else if(colName.equals("종료 일시")) {
-                                                assignmentDto.setDueDate(colValue);
-                                            } else if(colName.equals("마감까지 남은 기한")) {
-                                                // 추후 DTO에 필드 추가 후 set
-                                            } else if(colName.equals("최종 수정 일시") && colValue != null) {
-                                                if(colValue.equals("-")) {
-                                                    colValue = "";
+                            if(!docTemp.select(".generaltable tbody").hasClass("empty")) {
+                                elemsTemp = docTemp.select(".generaltable tbody tr");
+                                // 과제 세부 페이지
+                                for(Element assignEl : elemsTemp) {
+                                    String detailUrl = assignEl.select("a").attr("abs:href"); // view.php URL 링크 가져옴
+                                    if(!detailUrl.equals("")) {
+                                        apiResponse = doConnectByToken(detailUrl, token);
+                                        if(apiResponse.getData() != null) {
+                                            connResTemp = (Connection.Response) apiResponse.getData();
+                                            docTemp = connResTemp.parse();
+                                            Elements innerElems = docTemp.select(".generaltable tbody tr");
+
+                                            assignmentDto = new AssignmentDto();
+                                            assignmentDto.setSubjectName(mapCourseIdName.get(subjectId));
+                                            assignmentDto.setAssignName(docTemp.select("#page-content-wrap h2").text());
+                                            assignmentDto.setSubmitPageUrl(detailUrl);
+                                            // 과제 세부정보 테이블
+                                            for(Element detailAssignEl : innerElems) {
+                                                String colName = detailAssignEl.select("td").first().text();
+                                                String colValue = detailAssignEl.select("td").last().text();
+
+                                                if(colName.equals("채점 상황")) {
+                                                    // 추후 DTO에 필드 추가 후 set
+                                                } else if(colName.equals("종료 일시")) {
+                                                    assignmentDto.setDueDate(colValue);
+                                                } else if(colName.equals("최종 수정 일시") && colValue != null) {
+                                                    if(colValue.equals("-")) {
+                                                        colValue = "";
+                                                    }
+                                                    assignmentDto.setSubmitDate(colValue);
                                                 }
-                                                assignmentDto.setSubmitDate(colValue);
+                                                /*else if(colName.equals("마감까지 남은 기한")) {
+                                                    // 추후 DTO에 필드 추가 후 set
+                                                }*/
                                             }
+                                            listAssignment.add(assignmentDto);
+                                        } else {
+                                            return apiResponse;
                                         }
-                                        listAssignment.add(assignmentDto);
-                                    } else {
-                                        return detailRes;
                                     }
                                 }
+                            } else {
+                                assignmentDto = new AssignmentDto();
+                                assignmentDto.setSubjectName(mapCourseIdName.get(subjectId));
+                                listAssignment.add(assignmentDto);
                             }
                         } else {
-                            assignmentDto = new AssignmentDto();
-                            assignmentDto.setSubjectName(mapCourseIdName.get(subjectId));
-                            //assignmentDto.setErrorMsg("과제가 없습니다.");
-                            listAssignment.add(assignmentDto);
+                            return apiResponse;
                         }
-                    } else {
-                        return subjectRes;
                     }
+                    return new ApiResponse(200, "Success", listAssignment);
+                } catch(IOException e) {
+                    return new ApiResponse(500, e.getMessage(), null);
                 }
-            } catch(IOException e) {
-                return new ApiResponse(500, e.getMessage(), null);
+            } else {
+                return new ApiResponse(404, "수강신청된 과목이 없습니다.", null);
             }
-            return new ApiResponse(200, "Success", listAssignment);
+
         } else {
-            return new ApiResponse(404, "수강신청된 과목이 없습니다.", null);
+            return apiResponse;
         }
     }
     /* submitDate == null && quizInfo == null 이면 기간남은 퀴즈 안 푼거 */
     public ApiResponse getQuizzes(String token) {
-        ApiResponse courseRes = getCourse(token);
-        List<QuizDto> listQuiz = new ArrayList<>();
-        QuizDto quizDto;
+        ApiResponse apiResponse = getCourse(token);
+        if (apiResponse.getData() != null) {
+            Map<String, String> mapCourseIdName = (Map<String, String>) apiResponse.getData();
 
-        Map<String, String> mapCourseIdName = (Map<String, String>)courseRes.getData();
-        if(!mapCourseIdName.isEmpty()) {
-            String url = quizUrl;
-            // index.php (과제명, 마감기한, 제출여부만 알 수 있음)
-            Document indexPgDoc;
-            Elements indexPgEls;
-            // view.php (채점여부, 최종수정일시, 마감까지 남은 기한(n일)도 추가적으로 알 수 있음)
-            Document viewPgDoc;
-            Elements viewPgEls;
+            if(!mapCourseIdName.isEmpty()) {
+                List<QuizDto> listQuiz = new ArrayList<>();
+                QuizDto quizDto;
 
-            try {
-                log.info("getQuiz >> " + mapCourseIdName);
-                for(String subjectId : mapCourseIdName.keySet()) {
-                    ApiResponse subjectRes = doConnectByToken(url + subjectId, token);
-                    if(subjectRes.getData() != null) {
-                        Connection.Response quizRes = (Connection.Response) subjectRes.getData();
-                        indexPgDoc = quizRes.parse();
+                Connection.Response connResTemp;
+                // index.php (과제명, 마감기한, 제출여부만 알 수 있음)
+                Document indexPgDoc;
+                Elements indexPgEls;
+                // view.php (채점여부, 최종수정일시, 마감까지 남은 기한(n일)도 추가적으로 알 수 있음)
+                Document viewPgDoc;
+                Elements viewPgEls;
 
-                        if(!indexPgDoc.select(".generaltable tbody").hasClass("empty")) {
-                            indexPgEls = indexPgDoc.select(".generaltable tbody tr");
-                            // 퀴즈 세부 페이지
-                            for(Element quizEl : indexPgEls) {
-                                String detailUrl = quizEl.select("a").attr("abs:href"); // view.php URL 링크 가져옴
-                                if(!detailUrl.equals("")) {
-                                    ApiResponse detailRes = doConnectByToken(detailUrl, token);
-                                    if(detailRes.getData() != null) {
-                                        Connection.Response quizDetailRes = (Connection.Response) detailRes.getData();
-                                        viewPgDoc = quizDetailRes.parse();
+                try {
+                    for (String subjectId : mapCourseIdName.keySet()) {
+                        apiResponse = doConnectByToken(quizUrl + subjectId, token);
+                        if(apiResponse.getData() != null) {
+                            connResTemp = (Connection.Response) apiResponse.getData();
+                            indexPgDoc = connResTemp.parse();
 
-                                        String quizName = viewPgDoc.select("#page-content-wrap h2").text();
-                                        quizDto = new QuizDto();
-                                        quizDto.setSubjectName(mapCourseIdName.get(subjectId));
-                                        quizDto.setQuizName(quizName);
-                                        quizDto.setSolvePageUrl(detailUrl);
+                            if (!indexPgDoc.select(".generaltable tbody").hasClass("empty")) {
+                                indexPgEls = indexPgDoc.select(".generaltable tbody tr");
+                                // 퀴즈 세부 페이지
+                                for (Element quizEl : indexPgEls) {
+                                    String detailUrl = quizEl.select("a").attr("abs:href"); // view.php URL 링크 가져옴
+                                    if (!detailUrl.equals("")) {
+                                        apiResponse = doConnectByToken(detailUrl, token);
+                                        if (apiResponse.getData() != null) {
+                                            connResTemp = (Connection.Response) apiResponse.getData();
+                                            viewPgDoc = connResTemp.parse();
 
-                                        // 제출마감기한
-                                        viewPgEls = viewPgDoc.select(".box.quizinfo.well");
-                                        for(Element quizInfoEl : viewPgEls) {
-                                            String checkQuizInfo = quizInfoEl.select("p").text();
-                                            //log.info("box info >>"  + quizInfoEl.select("p").text());
-                                            if(checkQuizInfo.contains("종료일시")) {
-                                                String strDueDate = checkQuizInfo.split("종료일시 : ")[1];
-                                                quizDto.setDueDate(strDueDate);
+                                            String quizName = viewPgDoc.select("#page-content-wrap h2").text();
+                                            quizDto = new QuizDto();
+                                            quizDto.setSubjectName(mapCourseIdName.get(subjectId));
+                                            quizDto.setQuizName(quizName);
+                                            quizDto.setSolvePageUrl(detailUrl);
+
+                                            // 제출마감기한
+                                            viewPgEls = viewPgDoc.select(".box.quizinfo.well");
+                                            for (Element quizInfoEl : viewPgEls) {
+                                                String checkQuizInfo = quizInfoEl.select("p").text();
+                                                if (checkQuizInfo.contains("종료일시")) {
+                                                    String strDueDate = checkQuizInfo.split("종료일시 : ")[1];
+                                                    quizDto.setDueDate(strDueDate);
+                                                }
+                                                if (checkQuizInfo.contains("퀴즈를 이용할 수 없음")) {
+                                                    quizDto.setQuizInfo("퀴즈를 이용할 수 없음");
+                                                }
                                             }
-                                            if(checkQuizInfo.contains("퀴즈를 이용할 수 없음")){
-                                                quizDto.setQuizInfo("퀴즈를 이용할 수 없음");
+
+                                            viewPgEls = viewPgDoc.select(".generaltable tbody tr");
+                                            // 과제 세부정보 테이블
+                                            for (Element detailQuizEl : viewPgEls) {
+                                                String checkSubmitInfo = detailQuizEl.select(".lastrow td").first().text();
+                                                if (checkSubmitInfo.contains("종료됨")) {
+                                                    quizDto.setSubmitDate(checkSubmitInfo.replace("종료됨", "").replace("에 제출됨", ""));
+                                                }
                                             }
+                                            listQuiz.add(quizDto);
+                                        } else {
+                                            return apiResponse;
                                         }
-
-                                        viewPgEls = viewPgDoc.select(".generaltable tbody tr");
-                                        // 과제 세부정보 테이블
-                                        for(Element detailQuizEl : viewPgEls) {
-                                            //log.info("test0 >> " + detailQuizEl.select(".lastrow td").first().text());
-                                            String checkSubmitInfo = detailQuizEl.select(".lastrow td").first().text();
-                                            if(checkSubmitInfo.contains("종료됨")) {
-                                                //log.info("test1 >> " + detailQuizEl.select(".lastrow td").first().text());
-                                                //log.info("test2 >> " + detailQuizEl.select(".lastrow td").text());
-                                                quizDto.setSubmitDate(checkSubmitInfo.replace("종료됨", "").replace("에 제출됨", ""));
-                                            }
-                                        }
-                                        listQuiz.add(quizDto);
-                                    } else {
-                                        return detailRes;
                                     }
                                 }
+                            } else {
+                                quizDto = new QuizDto();
+                                quizDto.setSubjectName(mapCourseIdName.get(subjectId));
+                                listQuiz.add(quizDto);
                             }
                         } else {
-                            quizDto = new QuizDto();
-                            quizDto.setSubjectName(mapCourseIdName.get(subjectId));
-                            listQuiz.add(quizDto);
+                            return apiResponse;
                         }
-                    } else {
-                        return subjectRes;
                     }
+                    return new ApiResponse(200, "Success", listQuiz);
+                } catch (IOException e) {
+                    return new ApiResponse(500, e.getMessage(), null);
                 }
-            }  catch(IOException e) {
-                return new ApiResponse(500, e.getMessage(), null);
             }
-            return new ApiResponse(200, "Success", listQuiz);
-
+            else {
+                return new ApiResponse(404, "수강신청된 과목이 없습니다.", null);
+            }
         } else {
-            return new ApiResponse(404, "수강신청된 과목이 없습니다.", null);
+            return apiResponse;
         }
     }
 
@@ -365,6 +343,7 @@ public class MemberService {
             if(courseRes.getData() != null) {
                 Connection.Response res = (Connection.Response) courseRes.getData();
                 Document doc = res.parse();
+                //log.info("getCourse doc >> " + doc);
                 Elements myCourses = doc.select(".course_link");
 
                 //key : 과목 Id, value = 과목명
@@ -377,14 +356,13 @@ public class MemberService {
                     courseName = courseEl.select(".course-name .course-title h3").text();
                     mapCourseIdName.put(courseId, courseName);
                 }
-                log.info("mapCourseIdName >> " + mapCourseIdName);
                 return new ApiResponse(200, "Success", mapCourseIdName);
             } else {
                 return courseRes;
             }
 
         } catch(IOException e) {
-            return new ApiResponse(500, e.getMessage(), null);
+            return new ApiResponse(401, e.getMessage(), null);
         }
     }
 
@@ -397,7 +375,16 @@ public class MemberService {
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .execute();
 
-            return new ApiResponse(200, "Success", res);
+            // 만료된 토큰으로 연결한 url -> https://learn.inha.ac.kr/login.php?errorcode=4
+            // 성공 url -> https://learn.inha.ac.kr/
+            String resUrl = res.url().toString();
+            log.info("conn resUrl >> " + resUrl);
+            log.info("conn successUrl >> " + successUrl);
+            if(resUrl.contains("errorcode=4")) {
+                return new ApiResponse(401, "만료된 토큰입니다.", null);
+            } else {
+                return new ApiResponse(200, "Success", res);
+            }
         } catch(IOException e) {
             return new ApiResponse(500, e.getMessage(), null);
         }
