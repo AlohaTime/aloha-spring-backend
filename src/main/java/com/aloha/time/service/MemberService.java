@@ -45,10 +45,11 @@ public class MemberService {
 
         String token = "";
         String resUrl = "";
+        Connection.Response res;
 
         // 로그인 할 때 Connection
         try {
-            Connection.Response res = Jsoup.connect(loginUrl).data(data).method(Connection.Method.POST)
+            res = Jsoup.connect(loginUrl).data(data).method(Connection.Method.POST)
                    .header("Content-Type", "application/x-www-form-urlencoded")
                    .execute();
             token = res.cookie("MoodleSession");
@@ -57,12 +58,15 @@ public class MemberService {
             log.info("e.getMessage() >> " + e.getMessage());
             return new ApiResponse(500, e.getMessage(), null);
         }
-
+        log.info("loginUser >> " + resUrl);
         //String successUrl = "https://learn.inha.ac.kr/"; // 로그인 성공 시, URL
-        if(!successUrl.equals(resUrl)) {
-            return new ApiResponse(303, "로그인 실패", null);
+        // 로그인 실패 URL -> https://learn.inha.ac.kr/login.php?errorcode=3
+        if(successUrl.equals(resUrl)) {
+            return new ApiResponse(res.statusCode(), "로그인 성공", token);
+        } else if(resUrl.contains("errorcode=3")) {
+            return new ApiResponse(401, "아이디 또는 패스워드가 잘못 입력되었습니다.", null);
         } else {
-            return new ApiResponse(200, "로그인 성공", token);
+            return new ApiResponse(404, "알 수 없음", null);
         }
     }
 
@@ -76,7 +80,7 @@ public class MemberService {
                 AttendanceDto attendanceDto;
                 Map<String, Boolean> mapAttendance = new HashMap<>();
                 //ApiResponse apiResponse;
-                Connection.Response connResTemp;
+                Connection.Response connResTemp = null;
                 Document docTemp;
                 Elements elemsTemp;
                 try {
@@ -132,7 +136,7 @@ public class MemberService {
                                             attendanceDto.setSubjectName(mapCourseIdName.get(subjectId));
                                             attendanceDto.setLectureName(lectureName);
                                             attendanceDto.setIsAttended(mapAttendance.get(lectureName));
-                                            attendanceDto.setVideoPageUrl(videoDetailUrl);
+                                            attendanceDto.setAttendPageUrl(videoDetailUrl);
 
                                             for (Element attendTermEl : attendTermEls) {
                                                 String attendName = attendTermEl.select("span.vod_info").text(); // 시작일: 또는 출석인정일:이 나와야 함
@@ -152,7 +156,7 @@ public class MemberService {
                             return apiResponse;
                         }
                     }
-                    return new ApiResponse(200, "Success", attendanceDtoList);
+                    return new ApiResponse(connResTemp.statusCode(), "Success", attendanceDtoList);
                 } catch (IOException e) {
                     return new ApiResponse(500, e.getMessage(), null);
                 }
@@ -172,7 +176,7 @@ public class MemberService {
                 List<AssignmentDto> listAssignment = new ArrayList<>();
                 AssignmentDto assignmentDto;
 
-                Connection.Response connResTemp;
+                Connection.Response connResTemp = null;
                 Document docTemp;
                 Elements elemsTemp;
 
@@ -198,7 +202,7 @@ public class MemberService {
                                             assignmentDto = new AssignmentDto();
                                             assignmentDto.setSubjectName(mapCourseIdName.get(subjectId));
                                             assignmentDto.setAssignName(docTemp.select("#page-content-wrap h2").text());
-                                            assignmentDto.setSubmitPageUrl(detailUrl);
+                                            assignmentDto.setAssignPageUrl(detailUrl);
                                             // 과제 세부정보 테이블
                                             for(Element detailAssignEl : innerElems) {
                                                 String colName = detailAssignEl.select("td").first().text();
@@ -207,7 +211,7 @@ public class MemberService {
                                                 if(colName.equals("채점 상황")) {
                                                     // 추후 DTO에 필드 추가 후 set
                                                 } else if(colName.equals("종료 일시")) {
-                                                    assignmentDto.setDueDate(colValue);
+                                                    assignmentDto.setAssignedDateTo(colValue);
                                                 } else if(colName.equals("최종 수정 일시") && colValue != null) {
                                                     if(colValue.equals("-")) {
                                                         colValue = "";
@@ -233,7 +237,7 @@ public class MemberService {
                             return apiResponse;
                         }
                     }
-                    return new ApiResponse(200, "Success", listAssignment);
+                    return new ApiResponse(connResTemp.statusCode(), "Success", listAssignment);
                 } catch(IOException e) {
                     return new ApiResponse(500, e.getMessage(), null);
                 }
@@ -255,7 +259,7 @@ public class MemberService {
                 List<QuizDto> listQuiz = new ArrayList<>();
                 QuizDto quizDto;
 
-                Connection.Response connResTemp;
+                Connection.Response connResTemp = null;
                 // index.php (과제명, 마감기한, 제출여부만 알 수 있음)
                 Document indexPgDoc;
                 Elements indexPgEls;
@@ -285,7 +289,7 @@ public class MemberService {
                                             quizDto = new QuizDto();
                                             quizDto.setSubjectName(mapCourseIdName.get(subjectId));
                                             quizDto.setQuizName(quizName);
-                                            quizDto.setSolvePageUrl(detailUrl);
+                                            quizDto.setQuizPageUrl(detailUrl);
 
                                             // 제출마감기한
                                             viewPgEls = viewPgDoc.select(".box.quizinfo.well");
@@ -293,7 +297,7 @@ public class MemberService {
                                                 String checkQuizInfo = quizInfoEl.select("p").text();
                                                 if (checkQuizInfo.contains("종료일시")) {
                                                     String strDueDate = checkQuizInfo.split("종료일시 : ")[1];
-                                                    quizDto.setDueDate(strDueDate);
+                                                    quizDto.setQuizDateTo(strDueDate);
                                                 }
                                                 if (checkQuizInfo.contains("퀴즈를 이용할 수 없음")) {
                                                     quizDto.setQuizInfo("퀴즈를 이용할 수 없음");
@@ -323,7 +327,7 @@ public class MemberService {
                             return apiResponse;
                         }
                     }
-                    return new ApiResponse(200, "Success", listQuiz);
+                    return new ApiResponse(connResTemp.statusCode(), "Success", listQuiz);
                 } catch (IOException e) {
                     return new ApiResponse(500, e.getMessage(), null);
                 }
@@ -356,13 +360,13 @@ public class MemberService {
                     courseName = courseEl.select(".course-name .course-title h3").text();
                     mapCourseIdName.put(courseId, courseName);
                 }
-                return new ApiResponse(200, "Success", mapCourseIdName);
+                return new ApiResponse(res.statusCode(), "Success", mapCourseIdName);
             } else {
                 return courseRes;
             }
 
         } catch(IOException e) {
-            return new ApiResponse(401, e.getMessage(), null);
+            return new ApiResponse(500, e.getMessage(), null);
         }
     }
 
@@ -381,9 +385,9 @@ public class MemberService {
             log.info("conn resUrl >> " + resUrl);
             log.info("conn successUrl >> " + successUrl);
             if(resUrl.contains("errorcode=4")) {
-                return new ApiResponse(401, "만료된 토큰입니다.", null);
+                return new ApiResponse(401, "로그인 세션이 만료되었습니다.", null);
             } else {
-                return new ApiResponse(200, "Success", res);
+                return new ApiResponse(res.statusCode(), "Success", res);
             }
         } catch(IOException e) {
             return new ApiResponse(500, e.getMessage(), null);
