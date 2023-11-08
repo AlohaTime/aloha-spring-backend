@@ -2,6 +2,7 @@
 PROJECT_NAME="aloha-spring-backend"
 JAR_PATH="/home/ubuntu/aloha-spring-backend/build/libs/aloha-spring-backend-0.0.1-SNAPSHOT.jar"
 DEPLOY_PATH=/home/ubuntu/$PROJECT_NAME/
+DEPLOY_LOG_DIR_PATH="/home/ubuntu/$PROJECT_NAME/log"
 DEPLOY_LOG_PATH="/home/ubuntu/$PROJECT_NAME/log/deploy.log"
 DEPLOY_ERR_LOG_PATH="/home/ubuntu/$PROJECT_NAME/log/deploy_err.log"
 APPLICATION_LOG_PATH="/home/ubuntu/$PROJECT_NAME/log/application.log"
@@ -29,6 +30,8 @@ fi
 
 DEPLOY_JAR=$DEPLOY_PATH$JAR_NAME
 echo "> DEPLOY_JAR 배포" >> $DEPLOY_LOG_PATH
+mkdir $DEPLOY_LOG_DIR_PATH
+
 nohup java -jar -Dspring.profiles.active=local $DEPLOY_JAR --server.port=8080 >> $APPLICATION_LOG_PATH 2> $DEPLOY_ERR_LOG_PATH &
 
 sleep 3
