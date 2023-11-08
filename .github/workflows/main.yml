@@ -63,4 +63,4 @@ jobs:
           --application-name aloha-github-action-deploy
           --deployment-config-name CodeDeployDefault.OneAtATime
           --deployment-group-name aloha-github-action-group
-          --s3-location bucket=aloha-github-action-deploy,bundleType=tgz,key=$GITHUB_SHA.tar.gz
+          --s3-location bucket=lightsail-github-action-cicd,bundleType=tgz,key=$GITHUB_SHA.tar.gz
