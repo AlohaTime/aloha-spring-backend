@@ -3,13 +3,7 @@ package com.aloha.time.controller;
 import com.aloha.time.model.*;
 import com.aloha.time.service.MemberService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.io.IOException;
-import java.text.ParseException;
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
