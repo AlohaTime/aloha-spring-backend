@@ -27,5 +27,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # AWS 인증이 완료되었는지 테스트합니다.
-      - name: AWS Lightsail에 연결되었는지 확인
+      - name: AWS Lightsail 연결 확인
         run: aws configure list
+
+      # AWS 목록을 출력합니다.
+      - name: AWS 목록 출력
+        run: ls
