@@ -2,7 +2,7 @@ version: 0.0
 os: linux
 files:
   - source: /
-    destination: /home/ubuntu/github_action
+    destination: /home/ubuntu/aloha-spring-backend
 
 permissions:
   - object: /
@@ -11,9 +11,6 @@ permissions:
     mode: 755
     
 hooks:
-  BeforeInstall:
-    - location: deploy-before.sh
-      runas: ubuntu
   ApplicationStart:
     - location: scripts/deploy.sh
       runas: ubuntu
