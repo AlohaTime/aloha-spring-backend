@@ -30,6 +30,7 @@ dependencies {
 
 	// JSOUP
 	implementation 'org.jsoup:jsoup:1.12.1'
+
 }
 
 tasks.named('test') {
