@@ -17,6 +17,11 @@ import java.util.List;
 public class MemberController {
     private final MemberService memberService;
 
+    @GetMapping("/test")
+    public String test() {
+        return "test";
+    }
+
     // 로그인이나 출석정보AttendanceGetRequest
     @PostMapping("/login")
     public ApiResponse login(@RequestBody LoginRequest request) {
