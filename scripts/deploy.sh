@@ -1,6 +1,6 @@
 #!/bin/bash
 PROJECT_NAME="aloha-spring-backend"
-JAR_PATH="/home/ubuntu/github_action/build/libs/*.jar"
+JAR_PATH="/home/ubuntu/aloha-spring-backend/build/libs/*.jar"
 DEPLOY_PATH=/home/ubuntu/$PROJECT_NAME/
 DEPLOY_LOG_PATH="/home/ubuntu/$PROJECT_NAME/deploy.log"
 DEPLOY_ERR_LOG_PATH="/home/ubuntu/$PROJECT_NAME/deploy_err.log"
