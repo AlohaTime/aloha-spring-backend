@@ -60,7 +60,7 @@ jobs:
 
       - name: deploy with AWS codeDeploy
         run: aws deploy create-deployment
-          --application-name aloha-github-action-deploy
+          --application-name aloha-time
           --deployment-config-name CodeDeployDefault.OneAtATime
-          --deployment-group-name aloha-github-action-group
+          --deployment-group-name AlohaTimeDeploymentGrouop
           --s3-location bucket=lightsail-github-action-cicd,bundleType=tgz,key=$GITHUB_SHA.tar.gz
