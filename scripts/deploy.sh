@@ -2,9 +2,9 @@
 PROJECT_NAME="aloha-spring-backend"
 JAR_PATH="/home/ubuntu/aloha-spring-backend/build/libs/aloha-spring-backend-0.0.1-SNAPSHOT.jar"
 DEPLOY_PATH=/home/ubuntu/$PROJECT_NAME/
-DEPLOY_LOG_PATH="/home/ubuntu/log/$PROJECT_NAME/deploy.log"
-DEPLOY_ERR_LOG_PATH="/home/ubuntu/log/$PROJECT_NAME/deploy_err.log"
-APPLICATION_LOG_PATH="/home/ubuntu/log/$PROJECT_NAME/application.log"
+DEPLOY_LOG_PATH="/home/ubuntu/$PROJECT_NAME/log/deploy.log"
+DEPLOY_ERR_LOG_PATH="/home/ubuntu/$PROJECT_NAME/log/deploy_err.log"
+APPLICATION_LOG_PATH="/home/ubuntu/$PROJECT_NAME/log/application.log"
 BUILD_JAR=$(ls $JAR_PATH)
 JAR_NAME=$(basename $BUILD_JAR)
 
