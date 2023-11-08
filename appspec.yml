@@ -3,7 +3,7 @@ os: linux
 files:
   - source: /
     destination: /home/ubuntu/aloha-spring-backend
-
+file_exists_behavior: OVERWRITE
 permissions:
   - object: /
     owner: ubuntu
