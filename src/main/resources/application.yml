@@ -1,16 +1,12 @@
 server:
   port: 8080
 
-spring:
-  h2:
-    console:
-      enabled: true
-  datasource:
-    url: jdbc:h2:~/inha-plus-db
-    driver-class-name: org.h2.Driver
-    username: test
-    password:
-  jpa:
-    show-sql: true
-    hibernate:
-      ddl-auto: create
+connection:
+  iclass-init-url: "https://learn.inha.ac.kr/login/index.php"
+  iclass-video-url: "https://learn.inha.ac.kr/mod/vod/index.php?id="
+  iclass-quiz-url: "https://learn.inha.ac.kr/mod/quiz/index.php?id="
+  iclass-assign-url: "https://learn.inha.ac.kr/mod/assign/index.php?id="
+  iclass-attend-url: "https://learn.inha.ac.kr/report/ubcompletion/user_progress_a.php?id="
+  iclass-conn-success-url: "https://learn.inha.ac.kr/"
+
+
