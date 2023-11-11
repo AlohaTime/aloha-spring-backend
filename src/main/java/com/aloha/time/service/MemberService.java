@@ -76,7 +76,7 @@ public class MemberService {
             if (!mapCourseIdName.isEmpty()) {// key : 동영상(강의)명, value : 출석여부(true:O / false:X)
                 List<ItemDto> listAttendance = new ArrayList<>();
                 ItemDto attendance;
-                Map<String, Boolean> mapAttendance = new HashMap<>();
+                //Map<String, Boolean> mapAttendance = new HashMap<>();
                 Connection.Response connResTemp = null;
                 Document docTemp;
                 Elements elemsTemp;
@@ -281,7 +281,29 @@ public class MemberService {
                             connResTemp = (Connection.Response) apiResponse.getData();
                             docTemp = connResTemp.parse();
 
-                            if (!docTemp.select(".generaltable tbody").hasClass("empty")) {
+                            elemsTemp = docTemp.select(".generaltable tbody tr[class=''], tr[class='lastrow']");
+                            //elemsTemp = elemsTemp.select("tr[class=''], tr[class='lastrow']");
+                            Elements innerElements;
+                            for (Element rowElem : elemsTemp) {
+                                log.info("rowElem >> " + rowElem);
+
+                                assignment = new ItemDto();
+                                assignment.setSubjectName(mapCourseIdName.get(courseLink));
+
+                                innerElements = rowElem.select(".cell.c1, .cell.c2, .cell.c3");
+                                for(Element cellElem : innerElements) {
+                                    if(cellElem.hasClass("c1")) {
+                                        assignment.setItemName(cellElem.text());
+                                        assignment.setItemLink(cellElem.select("a").attr("abs:href"));
+                                    }
+                                    else if(cellElem.hasClass("c2")) assignment.setEndDate(cellElem.text());
+                                    else if(cellElem.hasClass("c3")) assignment.setIsDone(cellElem.text().equals("제출 완료") ? true : false);
+                                    // c1 : 과제명, c2 : endDate, c3 : isDone
+
+                                }
+                                listAssignment.add(assignment);
+                            }
+                            /*if (!docTemp.select(".generaltable tbody").hasClass("empty")) {
                                 elemsTemp = docTemp.select(".generaltable tbody tr");
                                 // 과제 세부 페이지
                                 for (Element assignEl : elemsTemp) {
@@ -320,7 +342,7 @@ public class MemberService {
                                 assignment = new ItemDto();
                                 assignment.setSubjectName(mapCourseIdName.get(courseLink));
                                 listAssignment.add(assignment);
-                            }
+                            }*/
                         } else {
                             return apiResponse;
                         }
@@ -337,7 +359,7 @@ public class MemberService {
             return apiResponse;
         }
     }
-    /* submitDate == null && quizInfo == null 이면 기간남은 퀴즈 안 푼거 */
+
     public ApiResponse getQuizzes (String token){
         ApiResponse apiResponse = getCourse(token);
         if (apiResponse.getData() != null) {
@@ -348,23 +370,67 @@ public class MemberService {
                 ItemDto quiz;
 
                 Connection.Response connResTemp = null;
-                // index.php (과제명, 마감기한, 제출여부만 알 수 있음)
-                Document indexPgDoc;
-                Elements indexPgEls;
-                // view.php (채점여부, 최종수정일시, 마감까지 남은 기한(n일)도 추가적으로 알 수 있음)
-                Document viewPgDoc;
-                Elements viewPgEls;
+                Document docTemp;
+                Elements elemsTemp;
 
                 try {
                     String courseId;
                     for (String courseLink : mapCourseIdName.keySet()) {
                         courseId = courseLink.split("=")[1];
                         apiResponse = doConnectByToken(quizUrl + courseId, token);
+
+                        Set<String> setLinkTarget = new HashSet<>(); // 성적 값이 없어서 페이지 이동해야 할 타겟
                         if (apiResponse.getData() != null) {
                             connResTemp = (Connection.Response) apiResponse.getData();
-                            indexPgDoc = connResTemp.parse();
+                            docTemp = connResTemp.parse();
 
-                            if (!indexPgDoc.select(".generaltable tbody").hasClass("empty")) {
+                            elemsTemp = docTemp.select(".generaltable tbody tr[class=''], tr[class='lastrow']");
+                            Elements innerElements;
+                            for (Element rowElem : elemsTemp) {
+                                quiz = new ItemDto();
+                                quiz.setSubjectName(mapCourseIdName.get(courseLink));
+
+                                quiz.setItemName(rowElem.select(".cell.c1").text());
+                                quiz.setItemLink(rowElem.select(".cell.c1 a").attr("abs:href"));
+                                quiz.setEndDate(rowElem.select(".cell.c2").text());
+                                log.info("rowElem >> " + rowElem.select(".cell.c3").text());
+
+                                if(rowElem.select(".cell.c3").text().equals("")) {
+                                    apiResponse = doConnectByToken(quiz.getItemLink(), token);
+                                    if (apiResponse.getData() != null) {
+                                        connResTemp = (Connection.Response) apiResponse.getData();
+                                        docTemp = connResTemp.parse();
+                                        //log.info("dddb >> " + docTemp.select(".box.quizinfo.well"));
+                                        innerElements = docTemp.select(".generaltable.quizattemptsummary .lastrow .cell.c0");
+                                        if(!innerElements.isEmpty() && innerElements.first().text().contains("종료됨")) {
+                                            quiz.setIsDone(true);
+                                        } else {
+                                            quiz.setIsDone(false);
+                                        }
+                                        //innerElements = ; // 제출됨 여부 가져옴
+                                        // 과제 세부정보 테이블
+                                        /*for (Element innerElem : innerElements) {
+                                            log.info("innerElem >> " + innerElem);
+                                            String checkSubmitInfo = innerElem.select(".lastrow td").first().text();
+                                            quiz.setIsDone(checkSubmitInfo.contains("종료됨") ? true : false);
+                                        }*/
+                                    }
+                                } else {
+                                    quiz.setIsDone(true);
+                                }
+
+
+                                /*innerElements = rowElem.select(".cell.c3");
+                                for(Element cellElem : innerElements) {
+                                    if(cellElem.text().equals("")) {
+                                        log.info("링크 접속");
+                                    }
+                                }*/
+                                listQuiz.add(quiz);
+                            }
+                            //indexPgDoc = connResTemp.parse();
+
+                            /*if (!indexPgDoc.select(".generaltable tbody").hasClass("empty")) {
                                 indexPgEls = indexPgDoc.select(".generaltable tbody tr");
                                 // 퀴즈 세부 페이지
                                 for (Element quizEl : indexPgEls) {
@@ -389,9 +455,9 @@ public class MemberService {
                                                     String strDueDate = checkQuizInfo.split("종료일시 : ")[1];
                                                     quiz.setEndDate(strDueDate);
                                                 }
-                                            /*if (checkQuizInfo.contains("퀴즈를 이용할 수 없음")) {
+                                            *//*if (checkQuizInfo.contains("퀴즈를 이용할 수 없음")) {
                                                 quiz.setQuizInfo("퀴즈를 이용할 수 없음");
-                                            }*/
+                                            }*//*
                                             }
 
                                             viewPgEls = viewPgDoc.select(".generaltable tbody tr");
@@ -413,7 +479,7 @@ public class MemberService {
                                 quiz = new ItemDto();
                                 quiz.setSubjectName(mapCourseIdName.get(courseLink));
                                 listQuiz.add(quiz);
-                            }
+                            }*/
                         } else {
                             return apiResponse;
                         }
