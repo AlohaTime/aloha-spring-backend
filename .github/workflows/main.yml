@@ -2,9 +2,7 @@ name: CI CD
 
 on:
   push:
-    branches: ['main']
-  pull_request:
-    branches: ['main']
+    branches: ['lightsail']
 
 env:
   LIGHTSAIL_SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
@@ -17,8 +15,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: checkout release
+        uses: actions/checkout@v3
 
-        # AWS 인증을 시작합니다.
+      - name: compress
+        run: tar cvfz ./$GITHUB_SHA.tar.gz *
+        shell: bash
+        
+      # AWS 인증을 시작합니다.
       - name: AWS 인증하기
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -26,11 +30,16 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # AWS 인증이 완료되었는지 테스트합니다.
-      - name: AWS Lightsail 연결 확인
+      - name: AWS Lightsail에 연결되었는지 확인
         run: aws configure list
-        
-      # AWS 목록을 출력합니다.
-      - name: AWS 목록 출력
-        run: ls
+
+      - name: upload to S3
+        run: aws s3 cp --region ap-northeast-2 ./$GITHUB_SHA.tar.gz s3://lightsail-github-action-cicd
+
+      - name: deploy with AWS codeDeploy
+        run: aws deploy create-deployment
+          --application-name aloha-time
+          --deployment-config-name CodeDeployDefault.OneAtATime
+          --deployment-group-name AlohaTimeDeploymentGrouop
+          --s3-location bucket=lightsail-github-action-cicd,bundleType=tgz,key=$GITHUB_SHA.tar.gz
 

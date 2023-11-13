@@ -11,6 +11,11 @@ import org.springframework.web.bind.annotation.*;
 public class MemberController {
     private final MemberService memberService;
 
+    @GetMapping("/test")
+    public String test() {
+        return "테스트다임마";
+    }
+
     // 로그인이나 출석정보AttendanceGetRequest
     @PostMapping("/login")
     public ApiResponse login(@RequestBody LoginRequest request) {
