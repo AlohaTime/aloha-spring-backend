@@ -1,6 +1,7 @@
 server:
   port: 8080
 
+
 connection:
   iclass-init-url: "https://learn.inha.ac.kr/login/index.php"
   iclass-video-url: "https://learn.inha.ac.kr/mod/vod/index.php?id="
