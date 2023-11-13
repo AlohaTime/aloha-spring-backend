@@ -19,7 +19,7 @@ public class MemberController {
 
     @GetMapping("/test")
     public String test() {
-        return "test2jkjkjjkj";
+        return "테스트다임마";
     }
 
     // 로그인이나 출석정보AttendanceGetRequest
