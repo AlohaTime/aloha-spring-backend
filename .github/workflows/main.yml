@@ -2,7 +2,7 @@ name: CI CD
 
 on:
   push:
-    branches: ['lightsail']
+    branches: ['master']
 
 env:
   LIGHTSAIL_SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
