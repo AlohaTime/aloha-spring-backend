@@ -31,6 +31,7 @@ public class MemberService {
     private String quizUrl;
     @Value("${connection.iclass-attend-url}")
     private String attendUrl;
+
     // 1. 로그인(토큰 가져오기)
     public ApiResponse loginUser(String memberId, String memberPw) {
         Map<String, String> data = new HashMap<>();
@@ -44,8 +45,8 @@ public class MemberService {
         // 로그인 할 때 Connection
         try {
             res = Jsoup.connect(loginUrl).data(data).method(Connection.Method.POST)
-                   .header("Content-Type", "application/x-www-form-urlencoded")
-                   .execute();
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .execute();
             token = res.cookie("MoodleSession");
             resUrl = res.url().toString();
         } catch (IOException e) {
@@ -54,9 +55,9 @@ public class MemberService {
         }
         //String successUrl = "https://learn.inha.ac.kr/"; // 로그인 성공 시, URL
         // 로그인 실패 URL -> https://learn.inha.ac.kr/login.php?errorcode=3
-        if(successUrl.equals(resUrl)) {
+        if (successUrl.equals(resUrl)) {
             return new ApiResponse(res.statusCode(), "로그인 성공", token);
-        } else if(resUrl.contains("errorcode=3")) {
+        } else if (resUrl.contains("errorcode=3")) {
             return new ApiResponse(401, "아이디 또는 패스워드가 잘못 입력되었습니다.", null);
         } else {
             return new ApiResponse(404, "알 수 없음", null);
@@ -96,10 +97,10 @@ public class MemberService {
                             for (Element attendanceBlock : elemsTemp) {
                                 // TODO. text()는 주차 수랑 같이 반환됨 공백으로 잘라서 가져옴 -> 개선 필요
                                 arrText = attendanceBlock.text().split(" ");
-                                strAttend = arrText[arrText.length-1];
+                                strAttend = arrText[arrText.length - 1];
                                 strWeek = attendanceBlock.select("p").attr("data-target");
                                 mapWeekAttendedStatus.put("section-" + strWeek, strAttend);
-                                if(strAttend.equals("-")) {
+                                if (strAttend.equals("-")) {
                                     break; // 열리지 않은 동영상
                                 }
 
@@ -107,7 +108,7 @@ public class MemberService {
 
                             List<String> listNoAttendLecture = new ArrayList<>(); // 결석 동영상 제목
                             // 결석이 있는 경우 온라인 출석부에서 확인
-                            if(mapWeekAttendedStatus.values().contains("결석")) {
+                            if (mapWeekAttendedStatus.values().contains("결석")) {
                                 apiResponse = doConnectByToken(attendUrl + courseId, token);
 
                                 if (apiResponse.getData() != null) {
@@ -126,7 +127,7 @@ public class MemberService {
                                         attendOx = (innerElems.size() == 6) ? innerElems.get(4).text() : innerElems.get(3).text();
                                         log.info("lectureName >> " + lectureName);
                                         log.info("attendOx >> " + attendOx);
-                                        if(attendOx.equals("X") && !lectureName.equals("")){
+                                        if (attendOx.equals("X") && !lectureName.equals("")) {
                                             listNoAttendLecture.add(lectureName);
                                         }
                                     }
@@ -141,7 +142,7 @@ public class MemberService {
                             for (Element weekContent : elemsTemp) {
 
                                 String videoLink = weekContent.select("a").attr("abs:href");
-                                if(videoLink.equals("")) {
+                                if (videoLink.equals("")) {
                                     continue;
                                 }
                                 Element tempElem;
@@ -178,7 +179,7 @@ public class MemberService {
     }
 
 
-    public ApiResponse getAssignments (String token){
+    public ApiResponse getAssignments(String token) {
         ApiResponse apiResponse = getCourse(token);
 
         if (apiResponse.getData() != null) {
@@ -210,13 +211,13 @@ public class MemberService {
                                 assignment.setSubjectName(mapCourseIdName.get(courseLink));
 
                                 innerElements = rowElem.select(".cell.c1, .cell.c2, .cell.c3");
-                                for(Element cellElem : innerElements) {
-                                    if(cellElem.hasClass("c1")) {
+                                for (Element cellElem : innerElements) {
+                                    if (cellElem.hasClass("c1")) {
                                         assignment.setItemName(cellElem.text());
                                         assignment.setItemLink(cellElem.select("a").attr("abs:href"));
-                                    }
-                                    else if(cellElem.hasClass("c2")) assignment.setEndDate(cellElem.text());
-                                    else if(cellElem.hasClass("c3")) assignment.setIsDone(cellElem.text().equals("제출 완료") ? true : false);
+                                    } else if (cellElem.hasClass("c2")) assignment.setEndDate(cellElem.text());
+                                    else if (cellElem.hasClass("c3"))
+                                        assignment.setIsDone(cellElem.text().equals("제출 완료") ? true : false);
                                     // c1 : 과제명, c2 : endDate, c3 : isDone
 
                                 }
@@ -239,7 +240,7 @@ public class MemberService {
         }
     }
 
-    public ApiResponse getQuizzes (String token){
+    public ApiResponse getQuizzes(String token) {
         ApiResponse apiResponse = getCourse(token);
         if (apiResponse.getData() != null) {
             Map<String, String> mapCourseIdName = (Map<String, String>) apiResponse.getData();
@@ -273,13 +274,13 @@ public class MemberService {
                                 quiz.setItemLink(rowElem.select(".cell.c1 a").attr("abs:href"));
                                 quiz.setEndDate(rowElem.select(".cell.c2").text());
 
-                                if(rowElem.select(".cell.c3").text().equals("")) {
+                                if (rowElem.select(".cell.c3").text().equals("")) {
                                     apiResponse = doConnectByToken(quiz.getItemLink(), token);
                                     if (apiResponse.getData() != null) {
                                         connResTemp = (Connection.Response) apiResponse.getData();
                                         docTemp = connResTemp.parse();
                                         innerElements = docTemp.select(".generaltable.quizattemptsummary .lastrow .cell.c0");
-                                        if(!innerElements.isEmpty() && innerElements.first().text().contains("종료됨")) {
+                                        if (!innerElements.isEmpty() && innerElements.first().text().contains("종료됨")) {
                                             quiz.setIsDone(true);
                                         } else {
                                             quiz.setIsDone(false);
@@ -306,7 +307,7 @@ public class MemberService {
         }
     }
 
-    public ApiResponse getCourse (String token){
+    public ApiResponse getCourse(String token) {
         try {
             String url = "https://learn.inha.ac.kr/";
             ApiResponse courseRes = doConnectByToken(url, token);
@@ -336,7 +337,7 @@ public class MemberService {
     }
 
     // 로그인을 제외한 Connection에서 사용
-    private ApiResponse doConnectByToken(String url, String token){
+    private ApiResponse doConnectByToken(String url, String token) {
         try {
             Connection.Response res = Jsoup.connect(url)
                     .cookie("MoodleSession", token)

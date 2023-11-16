@@ -1,4 +1,5 @@
 package com.aloha.time.model;
+
 import lombok.*;
 
 @Getter
