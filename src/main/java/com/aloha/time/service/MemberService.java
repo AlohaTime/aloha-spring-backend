@@ -79,7 +79,7 @@ public class MemberService {
                 Elements innerElemsTemp;
                 try {
                     String courseId;
-                    Map<String, String> mapWeekAttendedStatus;
+                    Set<String> setAttendedStatus;
                     for (String courseLink : mapCourseIdName.keySet()) {
                         courseId = courseLink.split("=")[1];
                         apiResponse = doConnectByToken(courseLink, token); // 과목별 메인페이지
@@ -87,19 +87,15 @@ public class MemberService {
                             connResTemp = (Connection.Response) apiResponse.getData();
                             docTemp = connResTemp.parse();
                             elemsTemp = docTemp.select(".user_attendance_table .attendance_section");
-                            //.user_attendance_table .attendance_section .sname 주차 가져옴
 
                             String strAttend; // 출석 여부 (출석/결석/(공백?)/-)
-                            String strWeek; // N주차
-                            // key : section-주차(숫자), value : 출석여부
-                            mapWeekAttendedStatus = new LinkedHashMap<>(); // 한 과목당, 출석상태 LinkedHashMap는 순서 보장
+                            setAttendedStatus = new HashSet<>();
                             String[] arrText;
                             for (Element attendanceBlock : elemsTemp) {
                                 // TODO. text()는 주차 수랑 같이 반환됨 공백으로 잘라서 가져옴 -> 개선 필요
                                 arrText = attendanceBlock.text().split(" ");
                                 strAttend = arrText[arrText.length - 1];
-                                strWeek = attendanceBlock.select("p").attr("data-target");
-                                mapWeekAttendedStatus.put("section-" + strWeek, strAttend);
+                                setAttendedStatus.add(strAttend);
                                 if (strAttend.equals("-")) {
                                     break; // 열리지 않은 동영상
                                 }
@@ -108,7 +104,7 @@ public class MemberService {
 
                             List<String> listNoAttendLecture = new ArrayList<>(); // 결석 동영상 제목
                             // 결석이 있는 경우 온라인 출석부에서 확인
-                            if (mapWeekAttendedStatus.values().contains("결석")) {
+                            if (setAttendedStatus.contains("결석")) {
                                 apiResponse = doConnectByToken(attendUrl + courseId, token);
 
                                 if (apiResponse.getData() != null) {
@@ -119,51 +115,68 @@ public class MemberService {
                                     Elements innerElems;
                                     String lectureName;
                                     String attendOx;
-                                    // todo. 아래 온라인 출석부 특정 주차만 반복 못하나..
+                                    String strWeekNum = "";
+
                                     for (Element progressEl : innerElemsTemp) {
                                         // 온라인 출석부에서 O, X로 가져올 때 td가 6개면 2번째, td가 4개면 첫번째 컬럼
                                         innerElems = progressEl.select("td");
-                                        lectureName = (innerElems.size() == 6) ? innerElems.get(1).text() : innerElems.first().text();
-                                        attendOx = (innerElems.size() == 6) ? innerElems.get(4).text() : innerElems.get(3).text();
-                                        log.info("lectureName >> " + lectureName);
-                                        log.info("attendOx >> " + attendOx);
+
+                                        if(innerElems.size() == 6) { // N주차 열 포함
+                                            lectureName = innerElems.get(1).text();
+                                            attendOx = innerElems.get(4).text();
+                                            strWeekNum = innerElems.get(0).text();
+                                        }
+                                        else {
+                                            lectureName = innerElems.first().text();
+                                            attendOx = innerElems.get(3).text();
+                                        }
                                         if (attendOx.equals("X") && !lectureName.equals("")) {
-                                            listNoAttendLecture.add(lectureName);
+                                            listNoAttendLecture.add(strWeekNum + "/" + lectureName);
                                         }
                                     }
                                 }
                             }
 
                             // 출석 세부정보
-                            elemsTemp = docTemp.select(".total_sections li.section.main.clearfix .content .section.img-text .activity.vod.modtype_vod .activityinstance");
-                            /*log.info("mapWeekAttendedStatus >> " + mapWeekAttendedStatus);
-                            log.info("listNoAttendLecture >> " + listNoAttendLecture);*/
+                            elemsTemp = docTemp.select(".total_sections li.section.main.clearfix .content"); //.sectionname
+                            Elements innerElemsWeek;
+                            String strWeekTemp = "";
 
-                            for (Element weekContent : elemsTemp) {
+                            for(Element weekContent : elemsTemp) {
+                                strWeekTemp = weekContent.select(".sectionname").text();
 
-                                String videoLink = weekContent.select("a").attr("abs:href");
-                                if (videoLink.equals("")) {
-                                    continue;
+                                if(strWeekTemp.contains("주차")) {
+                                    strWeekTemp = strWeekTemp.split("주차")[0];
                                 }
-                                Element tempElem;
-                                tempElem = weekContent.select(".instancename").first();
-                                String lectureName = tempElem != null ? tempElem.ownText() : "";
 
-                                tempElem = weekContent.select(".displayoptions .text-ubstrap").first();
-                                String[] arrAttendTerm = tempElem != null ? tempElem.text().split(" ~ ") : new String[2];
-                                //log.info("arrAttendTerm >> " + arrAttendTerm[arrAttendTerm.length-1]);
+                                strWeekTemp = strWeekTemp.replace(" ", "");
+                                innerElemsWeek = weekContent.select(".section.img-text .activity.vod.modtype_vod .activityinstance");
 
-                                attendance = new ItemDto();
-                                attendance.setSubjectName(mapCourseIdName.get(courseLink));
-                                attendance.setItemName(lectureName);
+                                for(Element innerElem : innerElemsWeek) {
+                                    String videoLink = innerElem.select("a").attr("abs:href");
+                                    if (videoLink.equals("")) {
+                                        continue;
+                                    }
 
-                                attendance.setIsDone(listNoAttendLecture.contains(lectureName) ? false : true);
-                                attendance.setItemLink(videoLink);
-                                attendance.setStartDate(arrAttendTerm[0]);
-                                attendance.setEndDate(arrAttendTerm[1]);
-                                listAttendance.add(attendance);
+                                    Element tempElem;
+                                    tempElem = innerElem.select(".instancename").first();
+                                    String lectureName = tempElem != null ? tempElem.ownText() : "";
+
+                                    tempElem = weekContent.select(".displayoptions .text-ubstrap").first();
+                                    String[] arrAttendTerm = tempElem != null ? tempElem.text().split(" ~ ") : new String[2];
+
+                                    attendance = new ItemDto();
+                                    attendance.setSubjectName(mapCourseIdName.get(courseLink));
+                                    attendance.setItemName(lectureName);
+
+                                    attendance.setIsDone(listNoAttendLecture.contains(strWeekTemp + "/" + lectureName) ? false : true);
+                                    attendance.setItemLink(videoLink);
+                                    attendance.setStartDate(arrAttendTerm[0]);
+                                    attendance.setEndDate(arrAttendTerm[1]);
+                                    listAttendance.add(attendance);
+                                }
+
                             }
-
                         }
                     }
                     return new ApiResponse(connResTemp.statusCode(), "Success", listAttendance);
