@@ -55,7 +55,6 @@ jobs:
         ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
           cd /home/${{ secrets.SSH_USER }}
           tar -xzf deploy.tar.gz
-          mv app.jar ${{ secrets.APP_PATH }}/app.jar
           rm deploy.tar.gz
           sudo systemctl restart aloha  # systemd를 사용하여 서비스 재시작
         EOF
